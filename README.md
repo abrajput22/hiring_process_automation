@@ -80,6 +80,20 @@ A comprehensive, automated hiring platform that streamlines the entire recruitme
 - **Error Handling**: Comprehensive exception management
 - **Data Validation**: Pydantic model validation
 
+
+## 📂 Project Structure
+hiring_process_automation/
+├── app/                # FastAPI application
+│   ├── routes/         # API routes
+│   ├── models/         # Pydantic models
+│   ├── services/       # Business logic
+│   └── utils/          # Helper functions
+├── tests/              # Unit and integration tests
+├── requirements.txt    # Python dependencies
+├── render.yaml         # Deployment configuration
+└── README.md           # Documentation
+
+
 ## 🔧 Installation & Setup
 
 ### Prerequisites
