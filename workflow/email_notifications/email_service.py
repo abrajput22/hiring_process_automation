@@ -20,21 +20,26 @@ async def notify_resume_results(candidates: List[Dict[str, Any]], process_name: 
     for candidate in candidates:
         try:
             if candidate["status"] == "Resume_shortlisted":
-                # Generate OA link without date
+                # Generate OA links for both localhost and Render
                 oa_date = process_data.get("assessment_date") if process_data else "TBD"
                 if isinstance(oa_date, str):
                     oa_date_str = oa_date
                 else:
                     oa_date_str = oa_date.strftime("%Y-%m-%d %H:%M IST") if oa_date else "TBD"
                 
-                oa_link = f"http://localhost:8000/{candidate['_id']}/OA/{process_data.get('_id', 'process_id')}" if process_data else "Will be provided soon"
+                process_id = process_data.get('_id', 'process_id') if process_data else 'process_id'
+                candidate_id = candidate['_id']
+                
+                localhost_link = f"http://localhost:8000/oa/{process_id}?candidate={candidate_id}"
+                render_link = f"https://hiring-process-automation.onrender.com/oa/{process_id}?candidate={candidate_id}"
                 
                 result = await send_resume_shortlisted_email(
                     candidate["email"],
                     candidate["name"],
                     process_name,
                     candidate["resume_match_score"],
-                    oa_link,
+                    localhost_link,
+                    render_link,
                     oa_date_str
                 )
             else:
