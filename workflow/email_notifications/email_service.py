@@ -30,8 +30,8 @@ async def notify_resume_results(candidates: List[Dict[str, Any]], process_name: 
                 process_id = process_data.get('_id', 'process_id') if process_data else 'process_id'
                 candidate_id = candidate['_id']
                 
-                localhost_link = f"http://localhost:8000/oa/{process_id}?candidate={candidate_id}"
-                render_link = f"https://hiring-process-automation.onrender.com/oa/{process_id}?candidate={candidate_id}"
+                localhost_link = f"http://localhost:8000/{candidate_id}/OA/{process_id}"
+                render_link = f"https://hiring-process-automation.onrender.com/{candidate_id}/OA/{process_id}"
                 
                 result = await send_resume_shortlisted_email(
                     candidate["email"],
