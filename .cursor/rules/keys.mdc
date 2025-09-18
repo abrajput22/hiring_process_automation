@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+if we required to hardcode any type of api keys,variable names like database,collection name or anything which is given by me than put them in .env.example file and import on required files on top 

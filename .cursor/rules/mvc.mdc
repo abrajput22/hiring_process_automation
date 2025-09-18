@@ -1,0 +1,13 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+Project structure:
+   - /models → define database schemas and ORM models
+   - /views → frontend templates or UI rendering code
+   - /controllers → handle business logic and API endpoints
+   - /routes → define routes and map them to controllers
+   - /config → configuration files (e.g., database connection, environment variables)
+   - /public → static files (css, js, images)
+   - app.js → main server entry point

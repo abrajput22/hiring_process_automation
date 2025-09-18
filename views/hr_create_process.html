@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Hiring Process</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="antialiased bg-gray-100" style="font-family: 'Inter', sans-serif;">
+    <div id="navbar-root"></div>
+    <main class="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-xl space-y-6">
+            <h1 class="text-3xl font-bold text-center">Create Hiring Process</h1>
+            <form id="procForm" class="space-y-4">
+                <input id="company_id" placeholder="Company ID" class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <input id="process_name" placeholder="Process Name" class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <textarea id="job_description" placeholder="Job Description"
+                    class="mt-1 w-full px-4 py-2 border rounded-lg"></textarea>
+                <label class="block text-sm">Resume Deadline</label>
+                <input id="resume_deadline" type="datetime-local" class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <label class="block text-sm">Assessment Date</label>
+                <input id="assessment_date" type="datetime-local" class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <label class="block text-sm">Offline Interview Date</label>
+                <input id="offline_interview_date" type="datetime-local"
+                    class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <input id="package_offered" placeholder="Package Offered"
+                    class="mt-1 w-full px-4 py-2 border rounded-lg">
+                <button type="submit"
+                    class="w-full py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">Create</button>
+                <div id="msg" class="text-center text-sm"></div>
+            </form>
+        </div>
+    </main>
+    <script src="/public/js/auth-utils.js"></script>
+    <script src="/public/js/navbar.js"></script>
+    <script>
+        (function init() {
+            const stored = window.AuthUtils.getStoredUser();
+            const token = window.AuthUtils.getStoredToken();
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            if (!token || !hrId) { window.location.href = '/login'; return; }
+            const form = document.getElementById('procForm');
+            const msg = document.getElementById('msg');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                msg.textContent = 'Creating...';
+                // Send datetime-local values as IST (no timezone conversion)
+                const payload = {
+                    hr_id: hrId,
+                    hr_email: stored.email || '',
+                    company_id: document.getElementById('company_id').value,
+                    process_name: document.getElementById('process_name').value,
+                    job_description: document.getElementById('job_description').value,
+                    resume_deadline: document.getElementById('resume_deadline').value,
+                    assessment_date: document.getElementById('assessment_date').value,
+                    offline_interview_date: document.getElementById('offline_interview_date').value,
+                    package_offered: document.getElementById('package_offered').value,
+                };
+                try {
+                    const res = await window.AuthUtils.authenticatedFetch(`/${hrId}/create_process`, {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok) { msg.textContent = 'Created!'; form.reset(); }
+                    else { msg.textContent = data.detail || 'Failed'; }
+                } catch (e) { msg.textContent = 'Failed'; }
+            });
+        })();
+    </script>
+</body>
+
+</html>
