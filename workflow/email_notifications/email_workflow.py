@@ -32,14 +32,19 @@ Congratulations! Your resume has been shortlisted for the position: {process_nam
 
 Your resume score: {score}/100
 
-Next Steps:
-- Online Assessment Link: {oa_link}
+Next Steps - Online Assessment:
 - Assessment Date: {oa_date}
-- The link will be active only on the scheduled date
 - Duration: 30 minutes
 - Questions: 5 Python MCQs
 
-Important: Please take the assessment on the scheduled date only.
+Online Assessment Links:
+🔗 Localhost: {localhost_link}
+🌐 Render: {render_link}
+
+Important: 
+- Use localhost link for local testing
+- Use Render link for production access
+- Links will be active only on the scheduled date
 
 Best regards,
 Hiring Team
@@ -200,7 +205,8 @@ email_workflow = EmailWorkflow()
 
 # Unified functions for different hiring stages
 async def send_resume_shortlisted_email(candidate_email: str, candidate_name: str, 
-                                      process_name: str, score: int, oa_link: str = "TBD", oa_date: str = "TBD") -> Dict[str, Any]:
+                                      process_name: str, score: int, localhost_link: str = "TBD", 
+                                      render_link: str = "TBD", oa_date: str = "TBD") -> Dict[str, Any]:
     """Send email when resume is shortlisted."""
     return await email_workflow.send_email(
         "resume_shortlisted",
@@ -208,7 +214,8 @@ async def send_resume_shortlisted_email(candidate_email: str, candidate_name: st
         candidate_name=candidate_name,
         process_name=process_name,
         score=score,
-        oa_link=oa_link,
+        localhost_link=localhost_link,
+        render_link=render_link,
         oa_date=oa_date
     )
 
