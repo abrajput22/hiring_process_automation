@@ -7,6 +7,7 @@ and updating candidate statuses for final selection.
 import os
 import asyncio
 from datetime import datetime, timezone
+from pymongo import UpdateOne
 from typing import Dict, List, Any, Optional, TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -135,40 +136,31 @@ async def score_resumes(state: HiringState) -> HiringState:
         
         # Score each candidate's resume
         scored_candidates = []
+        llm = None
         try:
             llm = get_openai_client()
             print(f"✅ STAGE 2: AI client initialized")
         except Exception as e:
-            print(f"⚠️ STAGE 2: AI client failed, using fallback scoring - {str(e)}")
-            import random
-            for candidate in candidates:
-                score = random.randint(40, 90)
-                new_status = "Resume_shortlisted" if score >= 50 else "Resume_rejected"
-                scored_candidates.append({
-                    **candidate,
-                    "resume_match_score": score,
-                    "status": new_status
-                })
-            print(f"✅ STAGE 2 COMPLETE: Fallback scoring - {len(scored_candidates)} candidates scored")
-            return {
-                **state,
-                "scored_candidates": scored_candidates,
-                "current_node": "update_database",
-                "error_message": None
-            }
+            print(f"⚠️ STAGE 2: AI client failed, using fallback - {str(e)}")
+            llm = None
         
         for i, candidate in enumerate(candidates):
             print(f"🔍 STAGE 2: Scoring candidate {i+1}/{len(candidates)} - {candidate.get('email', 'Unknown')}")
             resume_text = candidate.get("resume_text", "")
             if not resume_text:
-                # Candidates without resume get rejected
                 scored_candidate = {
                     **candidate,
                     "resume_match_score": 0,
                     "status": "Resume_rejected"
                 }
+            elif llm is None:
+                # Fallback: shortlist candidates with resumes
+                scored_candidate = {
+                    **candidate,
+                    "resume_match_score": 75,
+                    "status": "Resume_shortlisted"
+                }
             else:
-                # Call API for resume scoring
                 score = await _score_resume_against_jd_api(llm, jd_text, resume_text)
                 new_status = "Resume_shortlisted" if score >= 50 else "Resume_rejected"
                 scored_candidate = {
@@ -213,40 +205,59 @@ async def update_database(state: HiringState) -> HiringState:
                 "current_node": "error"
             }
         
-        # Update applications in database
+        # Bulk update applications in database for better performance
         applications = await db_manager.get_collection("applications")
         updated_count = 0
-        shortlisted_count = 0
         failed_updates = []
         
+        # Prepare bulk operations
+        bulk_ops = []
         for candidate in scored_candidates:
-            try:
-                await applications.update_one(
-                    {
+            bulk_ops.append({
+                "updateOne": {
+                    "filter": {
                         "candidate_id": candidate["_id"],
                         "process_id": process_id
                     },
-                    {
+                    "update": {
                         "$set": {
                             "resume_match_score": candidate["resume_match_score"],
                             "status": candidate["status"],
                             "updated_at": datetime.now(timezone.utc)
                         }
                     }
-                )
-                updated_count += 1
-                
-                if candidate["resume_match_score"] >= 50:
-                    shortlisted_count += 1
-                    
-            except Exception as e:
-                print(f"❌ DB UPDATE FAILED: {candidate['_id']} - {e}")
-                failed_updates.append({
-                    "candidate_id": candidate['_id'],
-                    "error": str(e),
-                    "score": candidate['resume_match_score'],
-                    "status": candidate['status']
-                })
+                }
+            })
+        
+        # Execute bulk update
+        try:
+            if bulk_ops:
+                result = await applications.bulk_write(bulk_ops)
+                updated_count = result.modified_count
+        except Exception as e:
+            print(f"❌ BULK UPDATE FAILED: {e}")
+            # Fallback to individual updates
+            for candidate in scored_candidates:
+                try:
+                    await applications.update_one(
+                        {
+                            "candidate_id": candidate["_id"],
+                            "process_id": process_id
+                        },
+                        {
+                            "$set": {
+                                "resume_match_score": candidate["resume_match_score"],
+                                "status": candidate["status"],
+                                "updated_at": datetime.now(timezone.utc)
+                            }
+                        }
+                    )
+                    updated_count += 1
+                except Exception as e:
+                    failed_updates.append({
+                        "candidate_id": candidate['_id'],
+                        "error": str(e)
+                    })
         
         # Select shortlisted and rejected candidates
         shortlisted_candidates = [
@@ -364,31 +375,26 @@ async def _score_resume_against_jd_api(llm: ChatOpenAI, jd_text: str, resume_tex
     Score resume against job description using ChatOpenAI.
     Returns integer score from 0-100.
     """
-    prompt = (
-        "You are a strict evaluator. Compare the candidate's resume to the job description. "
-        "Return ONLY an integer from 0 to 100 indicating match score; no text, no percent sign.\n\n"
-        f"Job Description:\n{jd_text}\n\nResume:\n{resume_text}\n\nScore:"
-    )
+    prompt = f"Score this resume (0-100) for job match. Return only number:\n\nJob: {jd_text[:500]}\n\nResume: {resume_text[:1000]}\n\nScore:"
     
     try:
         print(f"🤖 AI SCORING: Calling Gemini API...")
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=30.0)
+        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=3.0)
         text = response.content.strip()
         print(f"🤖 AI RESPONSE: {text}")
         
-        # Extract numeric score
         digits = ''.join(ch for ch in text if ch.isdigit())
-        score = int(digits) if digits else 0
+        score = int(digits) if digits else 75
         final_score = max(0, min(100, score))
         print(f"🤖 FINAL SCORE: {final_score}")
         return final_score
         
     except asyncio.TimeoutError:
-        print(f"⏰ AI TIMEOUT: Using fallback score 50")
-        return 50
+        print(f"⏰ AI TIMEOUT: Using fallback score 75")
+        return 75
     except Exception as e:
-        print(f"❌ AI ERROR: {e} - Using fallback score 50")
-        return 50
+        print(f"❌ AI ERROR: {e} - Using fallback score 75")
+        return 75
 
 
 def create_hiring_workflow() -> StateGraph:

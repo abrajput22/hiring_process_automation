@@ -3,6 +3,7 @@ Controller for workflow functionality.
 Handles all business logic related to workflow management and scheduling.
 """
 
+import asyncio
 from fastapi import HTTPException
 from typing import List, Dict, Any
 from workflow.resume_scoring.resume_shortlisting_workflow import run_resume_scoring_workflow
@@ -16,8 +17,14 @@ async def trigger_resume_workflow(process_id: str):
     This includes email notifications to candidates.
     """
     try:
-        result = await run_resume_scoring_workflow(process_id)
+        # Add timeout to prevent hanging on Render
+        result = await asyncio.wait_for(
+            run_resume_scoring_workflow(process_id), 
+            timeout=30.0
+        )
         return result
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=408, detail="Workflow timeout - process may still be running")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to trigger resume workflow: {str(e)}")
 
