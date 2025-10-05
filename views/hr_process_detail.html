@@ -26,6 +26,12 @@
                     <div>Deadline: <span id="resume-deadline" class="font-medium">-</span></div>
                     <div>Status: <span class="text-green-600 font-medium">Open for Applications</span></div>
                 </div>
+                <div class="mb-3">
+                    <button id="resume-shortlist-btn" onclick="runResumeShortlisting()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run Resume Shortlisting
+                    </button>
+                </div>
                 <div id="applications" class="space-y-2 max-h-64 overflow-y-auto"></div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow">
@@ -38,6 +44,12 @@
                 <div class="text-sm text-gray-600 mb-3">
                     <div>Assessment Date: <span id="assessment-date" class="font-medium">-</span></div>
                     <div>Status: <span class="text-yellow-600 font-medium">Ready for Assessment</span></div>
+                </div>
+                <div class="mb-3">
+                    <button id="oa-shortlist-btn" onclick="runOAShortlisting()" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run OA Shortlisting
+                    </button>
                 </div>
                 <div id="shortlisted" class="space-y-2 max-h-64 overflow-y-auto"></div>
             </div>
@@ -55,8 +67,12 @@
                 </div>
                 <div class="mb-3">
                     <button id="hr-scoring-btn" onclick="goToScoring()" 
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mr-2">
                         HR Scoring
+                    </button>
+                    <button id="final-shortlist-btn" onclick="runFinalShortlisting()" 
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run Final Shortlisting
                     </button>
                 </div>
                 <div class="text-gray-500 italic">Use HR Scoring button to view and score candidates</div>
@@ -209,6 +225,84 @@
             const parts = window.location.pathname.split('/');
             const processId = parts[parts.length - 1];
             window.location.href = `/${hrId}/processes/${processId}/scoring`;
+        }
+        
+        async function runResumeShortlisting() {
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const parts = window.location.pathname.split('/');
+            const processId = parts[parts.length - 1];
+            const btn = document.getElementById('resume-shortlist-btn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            try {
+                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/shortlist`, { method: 'POST' });
+                const d = await r.json();
+                if (r.ok) {
+                    alert(`Resume shortlisting completed!\nShortlisted: ${d.shortlisted_count}\nRejected: ${d.rejected_count}\nTotal: ${d.total_candidates}`);
+                    location.reload();
+                } else {
+                    alert(d.detail || 'Failed');
+                }
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Resume Shortlisting';
+            }
+        }
+        
+        async function runOAShortlisting() {
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const parts = window.location.pathname.split('/');
+            const processId = parts[parts.length - 1];
+            const btn = document.getElementById('oa-shortlist-btn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            try {
+                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/trigger-oa-workflow`, { method: 'POST' });
+                const d = await r.json();
+                if (r.ok) {
+                    alert(`OA workflow completed!\nCleared: ${d.cleared_count}\nRejected: ${d.rejected_count}`);
+                    location.reload();
+                } else {
+                    alert(d.detail || 'Failed');
+                }
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run OA Shortlisting';
+            }
+        }
+        
+        async function runFinalShortlisting() {
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const parts = window.location.pathname.split('/');
+            const processId = parts[parts.length - 1];
+            const btn = document.getElementById('final-shortlist-btn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            try {
+                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/trigger-final-workflow`, { method: 'POST' });
+                const d = await r.json();
+                if (r.ok) {
+                    alert(`Final shortlisting completed!\nSelected: ${d.selected_count}\nRejected: ${d.rejected_count}`);
+                    location.reload();
+                } else {
+                    alert(d.detail || 'Failed');
+                }
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Final Shortlisting';
+            }
         }
     </script>
 </body>

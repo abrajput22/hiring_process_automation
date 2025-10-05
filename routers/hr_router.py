@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import FileResponse
 import os
 
-from controller.process_controller import create_hiring_process, list_hiring_processes, shortlist_process_candidates, get_process_detail, sync_application_status, delete_hiring_process, get_oa_shortlisted_candidates, save_hr_scores, execute_final_shortlisting
+from controller.process_controller import create_hiring_process, list_hiring_processes, shortlist_process_candidates, get_process_detail, sync_application_status, delete_hiring_process, get_oa_shortlisted_candidates, save_hr_scores, execute_final_shortlisting, trigger_oa_workflow, trigger_final_workflow
 from controller.workflow_controller import trigger_workflow
 from controller.webhook_controller import schedule_deadline_webhook, unschedule_deadline_webhook, get_scheduled_jobs_webhook
 from middleware.auth_middleware import User, require_hr
@@ -63,6 +63,14 @@ async def save_scores(hr_id: str, process_id: str, scores: dict, user: User = De
 @router.post("/{hr_id}/processes/{process_id}/final-shortlist")  # Called by: HR scoring page | Returns: Final shortlisting results
 async def final_shortlist(hr_id: str, process_id: str, user: User = Depends(require_hr)):
     return await execute_final_shortlisting(process_id)
+
+@router.post("/{hr_id}/processes/{process_id}/trigger-oa-workflow")  # Called by: HR process detail page | Returns: OA workflow results
+async def trigger_oa_workflow_endpoint(hr_id: str, process_id: str, user: User = Depends(require_hr)):
+    return await trigger_oa_workflow(process_id)
+
+@router.post("/{hr_id}/processes/{process_id}/trigger-final-workflow")  # Called by: HR process detail page | Returns: Final workflow results
+async def trigger_final_workflow_endpoint(hr_id: str, process_id: str, user: User = Depends(require_hr)):
+    return await trigger_final_workflow(process_id)
 
 # Less specific routes after
 @router.get("/api/{hr_id}/processes")  # Called by: HR dashboard | Returns: List of all HR's processes

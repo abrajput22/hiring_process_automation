@@ -85,6 +85,47 @@
                     btn.textContent = 'Run Shortlisting';
                 }
             }
+            window.shortlist = async function (pid) {
+                const btn = document.getElementById(`shortlist-btn-${pid}`);
+                btn.disabled = true;
+                btn.textContent = 'Shortlisting running...';
+                
+                try {
+                    const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${pid}/shortlist`, { method: 'POST' });
+                    const d = await r.json();
+                    if (r.ok) {
+                        const shortlisted = d.shortlisted_count || 0;
+                        const rejected = d.rejected_count || 0;
+                        const total = d.total_candidates || 0;
+                        const results = d.results || {};
+                        const updateRate = results.db_update_success_rate;
+                        const failedUpdates = results.failed_updates || 0;
+                        
+                        let message = `Shortlisting completed!\nShortlisted: ${shortlisted}\nRejected: ${rejected}\nTotal: ${total}`;
+                        
+                        if (updateRate !== undefined && updateRate < 100) {
+                            message += `\n\nDatabase Updates: ${results.updated_candidates}/${total} succeeded`;
+                            if (failedUpdates > 0) {
+                                message += `\n${failedUpdates} updates failed due to connectivity issues.`;
+                                message += `\n\nTip: Use 'Sync Status' button on process detail page to retry failed updates.`;
+                            }
+                        }
+                        
+                        alert(message);
+                        
+                        // Auto-refresh the page to show any successful updates
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        alert(d.detail || 'Failed');
+                        btn.disabled = false;
+                        btn.textContent = 'Run Shortlisting';
+                    }
+                } catch (e) { 
+                    alert('Failed');
+                    btn.disabled = false;
+                    btn.textContent = 'Run Shortlisting';
+                }
+            }
             
             window.deleteProcess = async function(processId) {
                 if (!confirm('Are you sure you want to delete this process? This action cannot be undone.')) {

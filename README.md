@@ -80,7 +80,10 @@ A comprehensive, automated hiring platform that streamlines the entire recruitme
 - **Error Handling**: Comprehensive exception management
 - **Data Validation**: Pydantic model validation
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4b36f121c67c1d48f35da3b0fc16e110bf5dde9f
 ## 📂 Project Structure
 hiring_process_automation/
 ├── app/                # FastAPI application
@@ -94,6 +97,10 @@ hiring_process_automation/
 └── README.md           # Documentation
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4b36f121c67c1d48f35da3b0fc16e110bf5dde9f
 ## 🔧 Installation & Setup
 
 ### Prerequisites

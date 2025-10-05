@@ -70,6 +70,31 @@ async def shortlist_process_candidates(process_id: str):
     This endpoint delegates to the workflow instead of doing scoring directly.
     """
     try:
+        import pytz
+        
+        # Check if deadline has passed
+        processes = await db_manager.get_collection("Processes")
+        proc = await processes.find_one({"_id": ObjectId(process_id)})
+        if not proc:
+            raise HTTPException(status_code=404, detail="Process not found")
+        
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist_tz)
+        resume_deadline = proc.get("resume_deadline")
+        
+        if resume_deadline:
+            if resume_deadline.tzinfo is None:
+                resume_deadline = ist_tz.localize(resume_deadline)
+            if now > resume_deadline:
+                raise HTTPException(status_code=400, detail="Resume deadline has passed")
+        
+        # Cancel scheduled job
+        try:
+            from workflow.resume_scoring.ap_scheduler_trigger_on_deadline import scheduler
+            scheduler.remove_job(f"resume_{process_id}")
+        except:
+            pass
+        
         from workflow.resume_scoring.resume_shortlisting_workflow import run_resume_scoring_workflow
         result = await run_resume_scoring_workflow(process_id)
         
@@ -84,6 +109,8 @@ async def shortlist_process_candidates(process_id: str):
             "total_candidates": result.get("results", {}).get("total_candidates", 0)
         }
         
+    except HTTPException:
+        raise
     except ImportError:
         raise HTTPException(status_code=500, detail="Hiring workflow not available")
     except Exception as e:
@@ -371,3 +398,96 @@ async def execute_final_shortlisting(process_id: str) -> dict:
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to execute final shortlisting: {str(e)}")
+
+
+async def trigger_oa_workflow(process_id: str) -> dict:
+    """Trigger OA workflow manually."""
+    try:
+        from workflow.assessment_workflow import process_oa_deadline
+        result = await process_oa_deadline(process_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OA workflow failed: {str(e)}")
+
+
+async def trigger_final_workflow(process_id: str) -> dict:
+    """Trigger final shortlisting workflow manually."""
+    try:
+        from workflow.final_shortlisting_workflow import process_interview_deadline
+        result = await process_interview_deadline(process_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Final workflow failed: {str(e)}")
+
+async def trigger_oa_workflow(process_id: str) -> dict:
+    """Trigger OA workflow manually."""
+    try:
+        import pytz
+        
+        # Check if deadline has passed
+        processes = await db_manager.get_collection("Processes")
+        proc = await processes.find_one({"_id": ObjectId(process_id)})
+        if not proc:
+            raise HTTPException(status_code=404, detail="Process not found")
+        
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist_tz)
+        assessment_date = proc.get("assessment_date")
+        
+        if assessment_date:
+            if assessment_date.tzinfo is None:
+                assessment_date = ist_tz.localize(assessment_date)
+            if now > assessment_date:
+                raise HTTPException(status_code=400, detail="Assessment deadline has passed")
+        
+        # Cancel scheduled job
+        try:
+            from workflow.resume_scoring.ap_scheduler_trigger_on_deadline import scheduler
+            scheduler.remove_job(f"oa_{process_id}")
+        except:
+            pass
+        
+        from workflow.assessment_workflow import process_oa_deadline
+        result = await process_oa_deadline(process_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OA workflow failed: {str(e)}")
+
+
+async def trigger_final_workflow(process_id: str) -> dict:
+    """Trigger final shortlisting workflow manually."""
+    try:
+        import pytz
+        
+        # Check if deadline has passed
+        processes = await db_manager.get_collection("Processes")
+        proc = await processes.find_one({"_id": ObjectId(process_id)})
+        if not proc:
+            raise HTTPException(status_code=404, detail="Process not found")
+        
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist_tz)
+        interview_date = proc.get("offline_interview_date")
+        
+        if interview_date:
+            if interview_date.tzinfo is None:
+                interview_date = ist_tz.localize(interview_date)
+            if now > interview_date:
+                raise HTTPException(status_code=400, detail="Interview deadline has passed")
+        
+        # Cancel scheduled job
+        try:
+            from workflow.resume_scoring.ap_scheduler_trigger_on_deadline import scheduler
+            scheduler.remove_job(f"interview_{process_id}")
+        except:
+            pass
+        
+        from workflow.final_shortlisting_workflow import process_interview_deadline
+        result = await process_interview_deadline(process_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Final workflow failed: {str(e)}")
