@@ -17,6 +17,7 @@ fastapi>=0.112.0
 uvicorn>=0.30.0
 motor>=3.5.0
 PyJWT>=2.9.0
+python-multipart>=0.0.6
 
 # PDF and document processing
 pdfplumber>=0.10.0
