@@ -1,12 +1,8 @@
-﻿# Core orchestration
+# Core orchestration
 langchain>=0.3.0
 langgraph>=0.3.0
 langchain-openai>=0.3.0
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 4b36f121c67c1d48f35da3b0fc16e110bf5dde9f
 # Config and data
 pydantic>=2.7.0
 python-dotenv>=1.0.1
