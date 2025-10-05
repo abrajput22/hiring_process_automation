@@ -8,11 +8,8 @@ pydantic>=2.7.0
 python-dotenv>=1.0.1
 email-validator>=2.2.0
 
-
 # Scheduling
 apscheduler>=3.10.0
-
-
 pytz>=2023.3
 
 # Backend API
