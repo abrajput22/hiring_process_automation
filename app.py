@@ -29,10 +29,7 @@ class ISTJSONEncoder(json.JSONEncoder):
 
 app = FastAPI(title="Global Hiring Agent API", version="1.0.0")
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for keep-alive."""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -44,22 +41,7 @@ async def startup_event():
     except Exception as e:
         print(f"Failed to start APScheduler: {e}")
     
-    # Start keep-alive task for Render
-    if os.getenv("RENDER_URL"):
-        asyncio.create_task(keep_alive_task())
-        print("Keep-alive task started")
 
-async def keep_alive_task():
-    """Background task to prevent cold starts."""
-    import aiohttp
-    while True:
-        try:
-            await asyncio.sleep(600)  # 10 minutes
-            async with aiohttp.ClientSession() as session:
-                async with session.get("/health", timeout=5) as response:
-                    pass
-        except Exception:
-            pass
 
 @app.on_event("shutdown")
 async def shutdown_event():

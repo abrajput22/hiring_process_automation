@@ -7,7 +7,7 @@ and updating candidate statuses for final selection.
 import os
 import asyncio
 from datetime import datetime, timezone
-from pymongo import UpdateOne
+
 from typing import Dict, List, Any, Optional, TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -46,7 +46,7 @@ async def check_deadline_and_load_candidates(state: HiringState) -> HiringState:
     """
     try:
         process_id = state["process_id"]
-        print(f"📋 STAGE 1: Loading candidates for process {process_id}")
+        print(f"📋 T6: STAGE 1 Loading candidates at {datetime.now()}")
         
         # Get process data
         processes = await db_manager.get_collection("Processes")
@@ -91,7 +91,7 @@ async def check_deadline_and_load_candidates(state: HiringState) -> HiringState:
             except Exception:
                 continue
         
-        print(f"✅ STAGE 1 COMPLETE: Loaded {len(candidate_list)} candidates")
+        print(f"✅ T7: STAGE 1 COMPLETE at {datetime.now()} - Loaded {len(candidate_list)} candidates")
         return {
             **state,
             "process_data": proc,
@@ -115,7 +115,7 @@ async def score_resumes(state: HiringState) -> HiringState:
     try:
         process_data = state["process_data"]
         candidates = state["candidates"]
-        print(f"🤖 STAGE 2: AI Resume Scoring - {len(candidates)} candidates")
+        print(f"🤖 T8: STAGE 2 AI Scoring START at {datetime.now()} - {len(candidates)} candidates")
         
         if not process_data or not candidates:
             print(f"❌ STAGE 2 ERROR: Missing process data or candidates")
@@ -171,7 +171,7 @@ async def score_resumes(state: HiringState) -> HiringState:
             
             scored_candidates.append(scored_candidate)
         
-        print(f"✅ STAGE 2 COMPLETE: AI scoring finished - {len(scored_candidates)} candidates scored")
+        print(f"✅ T9: STAGE 2 COMPLETE at {datetime.now()} - {len(scored_candidates)} candidates scored")
         return {
             **state,
             "scored_candidates": scored_candidates,
@@ -195,7 +195,7 @@ async def update_database(state: HiringState) -> HiringState:
     try:
         scored_candidates = state["scored_candidates"]
         process_id = state["process_id"]
-        print(f"💾 STAGE 3: Database Update - {len(scored_candidates)} candidates")
+        print(f"💾 T10: STAGE 3 DB Update START at {datetime.now()} - {len(scored_candidates)} candidates")
         
         if not scored_candidates:
             print(f"❌ STAGE 3 ERROR: No scored candidates to update")
@@ -205,59 +205,32 @@ async def update_database(state: HiringState) -> HiringState:
                 "current_node": "error"
             }
         
-        # Bulk update applications in database for better performance
+        # Update applications in database
         applications = await db_manager.get_collection("applications")
         updated_count = 0
         failed_updates = []
         
-        # Prepare bulk operations
-        bulk_ops = []
         for candidate in scored_candidates:
-            bulk_ops.append({
-                "updateOne": {
-                    "filter": {
+            try:
+                await applications.update_one(
+                    {
                         "candidate_id": candidate["_id"],
                         "process_id": process_id
                     },
-                    "update": {
+                    {
                         "$set": {
                             "resume_match_score": candidate["resume_match_score"],
                             "status": candidate["status"],
                             "updated_at": datetime.now(timezone.utc)
                         }
                     }
-                }
-            })
-        
-        # Execute bulk update
-        try:
-            if bulk_ops:
-                result = await applications.bulk_write(bulk_ops)
-                updated_count = result.modified_count
-        except Exception as e:
-            print(f"❌ BULK UPDATE FAILED: {e}")
-            # Fallback to individual updates
-            for candidate in scored_candidates:
-                try:
-                    await applications.update_one(
-                        {
-                            "candidate_id": candidate["_id"],
-                            "process_id": process_id
-                        },
-                        {
-                            "$set": {
-                                "resume_match_score": candidate["resume_match_score"],
-                                "status": candidate["status"],
-                                "updated_at": datetime.now(timezone.utc)
-                            }
-                        }
-                    )
-                    updated_count += 1
-                except Exception as e:
-                    failed_updates.append({
-                        "candidate_id": candidate['_id'],
-                        "error": str(e)
-                    })
+                )
+                updated_count += 1
+            except Exception as e:
+                failed_updates.append({
+                    "candidate_id": candidate['_id'],
+                    "error": str(e)
+                })
         
         # Select shortlisted and rejected candidates
         shortlisted_candidates = [
@@ -271,7 +244,7 @@ async def update_database(state: HiringState) -> HiringState:
         actual_shortlisted = len(shortlisted_candidates)
         actual_rejected = len(rejected_candidates)
         
-        print(f"✅ STAGE 3 COMPLETE: DB Updated - {updated_count}/{len(scored_candidates)} success - Shortlisted: {actual_shortlisted}, Rejected: {actual_rejected}")
+        print(f"✅ T11: STAGE 3 COMPLETE at {datetime.now()} - Updated: {updated_count}/{len(scored_candidates)}")
         return {
             **state,
             "shortlisted_candidates": shortlisted_candidates,
@@ -305,7 +278,7 @@ async def send_email_notifications(state: HiringState) -> HiringState:
     try:
         scored_candidates = state["scored_candidates"]
         process_data = state["process_data"]
-        print(f"📧 STAGE 4: Email Notifications - Resume Shortlisting Stage")
+        print(f"📧 T12: STAGE 4 Email START at {datetime.now()}")
         
         if not scored_candidates or not process_data:
             print(f"❌ STAGE 4 ERROR: Missing candidates or process data")
@@ -324,7 +297,7 @@ async def send_email_notifications(state: HiringState) -> HiringState:
         # Send email notifications with OA links
         email_results = await notify_resume_results(scored_candidates, process_name, process_data)
         
-        print(f"✅ STAGE 4 COMPLETE: Emails sent - Success: {email_results['sent']}, Failed: {email_results['failed']}")
+        print(f"✅ T13: STAGE 4 COMPLETE at {datetime.now()} - Emails: {email_results['sent']} sent, {email_results['failed']} failed")
         
         # Log email details
         for detail in email_results.get('details', []):
@@ -378,10 +351,10 @@ async def _score_resume_against_jd_api(llm: ChatOpenAI, jd_text: str, resume_tex
     prompt = f"Score this resume (0-100) for job match. Return only number:\n\nJob: {jd_text[:500]}\n\nResume: {resume_text[:1000]}\n\nScore:"
     
     try:
-        print(f"🤖 AI SCORING: Calling Gemini API...")
+        print(f"🤖 T_AI_START: Calling Gemini API at {datetime.now()}")
         response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=3.0)
         text = response.content.strip()
-        print(f"🤖 AI RESPONSE: {text}")
+        print(f"🤖 T_AI_END: Gemini response at {datetime.now()}: {text}")
         
         digits = ''.join(ch for ch in text if ch.isdigit())
         score = int(digits) if digits else 75
@@ -460,12 +433,14 @@ async def run_resume_scoring_workflow(process_id: str, trigger_type: str = "MANU
     Run the resume scoring workflow for a specific process.
     This is the main entry point for the workflow.
     """
-    print(f"🚀 WORKFLOW START: Resume Shortlisting - Process: {process_id} - Trigger: {trigger_type}")
+    from datetime import datetime
+    print(f"🚀 T1: WORKFLOW START at {datetime.now()} - Process: {process_id}")
     
     try:
+        print(f"🔧 T2: Creating workflow at {datetime.now()}")
         workflow = create_hiring_workflow()
         app = workflow.compile()
-        print(f"✅ WORKFLOW: Compiled successfully")
+        print(f"✅ T3: Workflow compiled at {datetime.now()}")
         
         initial_state = HiringState(
             process_id=process_id,
@@ -478,13 +453,13 @@ async def run_resume_scoring_workflow(process_id: str, trigger_type: str = "MANU
             results={}
         )
         
-        print(f"⏳ WORKFLOW: Starting execution...")
+        print(f"⏳ T4: Starting execution at {datetime.now()}")
         result = await app.ainvoke(initial_state)
-        print(f"🎉 WORKFLOW COMPLETE: Resume Shortlisting - Process: {process_id}")
+        print(f"🎉 T5: WORKFLOW COMPLETE at {datetime.now()}")
         return result
         
     except Exception as e:
-        print(f"❌ WORKFLOW ERROR: Resume Shortlisting - Process: {process_id} - Error: {str(e)}")
+        print(f"❌ WORKFLOW ERROR at {datetime.now()}: {str(e)}")
         return {
             "error": f"Workflow execution failed: {str(e)}",
             "process_id": process_id

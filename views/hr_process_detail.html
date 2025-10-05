@@ -228,23 +228,22 @@
         }
         
         async function runResumeShortlisting() {
-            const hrId = window.AuthUtils.getStoredCandidateId();
-            const parts = window.location.pathname.split('/');
-            const processId = parts[parts.length - 1];
+            console.log('🔥 BUTTON CLICKED: Resume Shortlisting button clicked!');
             const btn = document.getElementById('resume-shortlist-btn');
-            
             btn.disabled = true;
             btn.textContent = 'Running...';
             
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
             try {
-                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/shortlist`, { method: 'POST' });
+                const r = await fetch(`/${hrId}/processes/${processId}/shortlist`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
                 const d = await r.json();
-                if (r.ok) {
-                    alert(`Resume shortlisting completed!\nShortlisted: ${d.shortlisted_count}\nRejected: ${d.rejected_count}\nTotal: ${d.total_candidates}`);
-                    location.reload();
-                } else {
-                    alert(d.detail || 'Failed');
-                }
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
             } catch (e) {
                 alert('Failed');
             } finally {
@@ -254,23 +253,20 @@
         }
         
         async function runOAShortlisting() {
-            const hrId = window.AuthUtils.getStoredCandidateId();
-            const parts = window.location.pathname.split('/');
-            const processId = parts[parts.length - 1];
             const btn = document.getElementById('oa-shortlist-btn');
-            
             btn.disabled = true;
             btn.textContent = 'Running...';
             
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
             try {
-                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/trigger-oa-workflow`, { method: 'POST' });
-                const d = await r.json();
-                if (r.ok) {
-                    alert(`OA workflow completed!\nCleared: ${d.cleared_count}\nRejected: ${d.rejected_count}`);
-                    location.reload();
-                } else {
-                    alert(d.detail || 'Failed');
-                }
+                const r = await fetch(`/${hrId}/processes/${processId}/trigger-oa-workflow`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
             } catch (e) {
                 alert('Failed');
             } finally {
@@ -280,23 +276,20 @@
         }
         
         async function runFinalShortlisting() {
-            const hrId = window.AuthUtils.getStoredCandidateId();
-            const parts = window.location.pathname.split('/');
-            const processId = parts[parts.length - 1];
             const btn = document.getElementById('final-shortlist-btn');
-            
             btn.disabled = true;
             btn.textContent = 'Running...';
             
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
             try {
-                const r = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/trigger-final-workflow`, { method: 'POST' });
-                const d = await r.json();
-                if (r.ok) {
-                    alert(`Final shortlisting completed!\nSelected: ${d.selected_count}\nRejected: ${d.rejected_count}`);
-                    location.reload();
-                } else {
-                    alert(d.detail || 'Failed');
-                }
+                const r = await fetch(`/${hrId}/processes/${processId}/trigger-final-workflow`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
             } catch (e) {
                 alert('Failed');
             } finally {

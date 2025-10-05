@@ -3,6 +3,9 @@ Online Assessment Controller.
 Handles OA page display, date validation, and score submission.
 """
 
+# Configuration: Hours before OA deadline when test window opens
+OA_WINDOW_HOURS = 24
+
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 from datetime import datetime, date
@@ -34,7 +37,7 @@ async def get_oa_page(candidate_id: str, process_id: str) -> HTMLResponse:
         if not process_data:
             raise HTTPException(status_code=404, detail="Process not found")
         
-        # Check if OA is currently active (assessment_date - 2 hours to assessment_date)
+        # Check if OA is currently active (assessment_date - OA_WINDOW_HOURS to assessment_date)
         assessment_date = process_data.get("assessment_date")
         if assessment_date:
             from datetime import timedelta
@@ -46,7 +49,7 @@ async def get_oa_page(candidate_id: str, process_id: str) -> HTMLResponse:
             if assessment_date.tzinfo is None:
                 assessment_date = ist_tz.localize(assessment_date)
             
-            oa_start = assessment_date - timedelta(hours=2)
+            oa_start = assessment_date - timedelta(hours=OA_WINDOW_HOURS)
             oa_end = assessment_date
             
             if now < oa_start:
@@ -128,7 +131,7 @@ async def submit_oa_answers(candidate_id: str, process_id: str, answers: Dict[st
             if assessment_date.tzinfo is None:
                 assessment_date = ist_tz.localize(assessment_date)
             
-            oa_start = assessment_date - timedelta(hours=2)
+            oa_start = assessment_date - timedelta(hours=OA_WINDOW_HOURS)
             oa_end = assessment_date
             
             if now < oa_start or now > oa_end:

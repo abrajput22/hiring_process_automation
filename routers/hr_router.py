@@ -22,7 +22,11 @@ async def create_process(hr_id: str, process: HiringProcess, user: User = Depend
 # More specific routes first
 @router.post("/{hr_id}/processes/{process_id}/shortlist")  # Called by: HR shortlist button | Returns: Shortlisted candidates list
 async def shortlist_candidates(hr_id: str, process_id: str, user: User = Depends(require_hr)):
-    return await shortlist_process_candidates(process_id)
+    from datetime import datetime
+    print(f"🔥 T0: Button clicked - Route hit at {datetime.now()}")
+    result = await shortlist_process_candidates(process_id)
+    print(f"🏁 T_FINAL: Workflow complete at {datetime.now()}")
+    return result
 
 @router.post("/{hr_id}/processes/{process_id}/trigger-workflow")  # Called by: HR workflow trigger | Returns: Workflow execution status
 async def trigger_workflow_endpoint(hr_id: str, process_id: str, user: User = Depends(require_hr)):
