@@ -88,10 +88,12 @@ async def shortlist_process_candidates(process_id: str):
             if now > resume_deadline:
                 raise HTTPException(status_code=400, detail="Resume deadline has passed")
         
-        # Cancel scheduled job
+        # Cancel all scheduled jobs for this process
         try:
             from workflow.resume_scoring.ap_scheduler_trigger_on_deadline import scheduler
             scheduler.remove_job(f"resume_{process_id}")
+            scheduler.remove_job(f"oa_{process_id}")
+            scheduler.remove_job(f"interview_{process_id}")
         except:
             pass
         
