@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Scoring - OA Shortlisted Candidates</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .candidates-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .candidates-table th, .candidates-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .candidates-table th { background-color: #f8f9fa; font-weight: bold; }
+        .score-input { width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-oa-cleared { background-color: #d4edda; color: #155724; }
+        .loading { display: none; text-align: center; margin: 20px 0; }
+        .alert { padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HR Scoring - OA Shortlisted Candidates</h1>
+            <div>
+                <button class="btn btn-success" onclick="saveAllScores()">Save All Scores</button>
+                <button class="btn btn-primary" onclick="executeFinalShortlisting()">Execute Final Shortlisting</button>
+                <a href="#" class="btn btn-secondary" onclick="goBack()">Back to Process</a>
+            </div>
+        </div>
+
+        <div id="processInfo" class="alert alert-info" style="background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;">
+            <strong>Process:</strong> <span id="processName">Loading...</span><br>
+            <strong>Interview Date:</strong> <span id="interviewDate">Loading...</span>
+        </div>
+
+        <div id="loading" class="loading">
+            <p>Loading candidates...</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <table class="candidates-table" id="candidatesTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>OA Score</th>
+                    <th>Technical Score</th>
+                    <th>HR Score</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="candidatesBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/public/js/auth-utils.js"></script>
+    <script>
+        let processId = '';
+        let hrId = '';
+        let candidates = [];
+
+        // Extract IDs from URL  
+        function extractIdsFromUrl() {
+            const path = window.location.pathname;
+            const parts = path.split('/');
+            hrId = parts[1];
+            // URL: /{hrId}/processes/{processId}/scoring
+            // parts: ['', hrId, 'processes', processId, 'scoring']
+            processId = parts[3];
+        }
+
+        function goBack() {
+            window.location.href = `/${hrId}/show_process_detail/${processId}`;
+        }
+
+        async function loadCandidates() {
+            try {
+                console.log('Loading candidates for hrId:', hrId, 'processId:', processId);
+                const response = await window.AuthUtils.authenticatedFetch(`/api/${hrId}/processes/${processId}/oa-shortlisted`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load candidates');
+                }
+                
+                console.log('Response data:', data);
+                
+                if (data.error) {
+                    showAlert(data.error, 'error');
+                    return;
+                }
+
+                candidates = data.candidates || [];
+                document.getElementById('processName').textContent = data.process?.process_name || 'Unknown Process';
+                document.getElementById('interviewDate').textContent = data.process?.offline_interview_date ? new Date(data.process.offline_interview_date).toLocaleDateString() : 'TBD';
+                
+                renderCandidatesTable();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('candidatesTable').style.display = 'table';
+            } catch (error) {
+                console.error('Load candidates error:', error);
+                showAlert('Failed to load candidates: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderCandidatesTable() {
+            const tbody = document.getElementById('candidatesBody');
+            tbody.innerHTML = '';
+
+            candidates.forEach((candidate, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${candidate.name || 'N/A'}</td>
+                    <td>${candidate.email}</td>
+                    <td>${candidate.oa_score || 'N/A'}</td>
+                    <td>
+                        <input type="number" 
+                               class="tech-score-input" 
+                               min="0" 
+                               max="100" 
+                               value="${candidate.tech_score || ''}"
+                               data-candidate-id="${candidate.candidate_id}"
+                               placeholder="0-100">
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="hr-score-input" 
+                               min="0" 
+                               max="100" 
+                               value="${candidate.hr_score || ''}"
+                               data-candidate-id="${candidate.candidate_id}"
+                               placeholder="0-100">
+                    </td>
+                    <td>
+                        <span class="status-badge status-oa-cleared">${candidate.status}</span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function saveAllScores() {
+            const techInputs = document.querySelectorAll('.tech-score-input');
+            const hrInputs = document.querySelectorAll('.hr-score-input');
+            const scores = [];
+
+            techInputs.forEach((techInput, index) => {
+                const candidateId = techInput.dataset.candidateId;
+                const techScore = parseInt(techInput.value) || 0;
+                const hrScore = parseInt(hrInputs[index].value) || 0;
+                scores.push({ 
+                    candidate_id: candidateId, 
+                    tech_score: techScore,
+                    hr_score: hrScore 
+                });
+            });
+
+            try {
+                const response = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/save-hr-scores`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scores })
+                });
+
+                const result = await response.json();
+                if (result.error) {
+                    showAlert(result.error, 'error');
+                } else {
+                    showAlert(`Successfully saved scores for ${result.updated_count} candidates`, 'success');
+                }
+            } catch (error) {
+                showAlert('Failed to save scores: ' + error.message, 'error');
+            }
+        }
+
+        async function executeFinalShortlisting() {
+            if (!confirm('Execute final shortlisting? This will send selection emails to qualified candidates.')) {
+                return;
+            }
+
+            try {
+                const response = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}/final-shortlist`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.error) {
+                    showAlert(result.error, 'error');
+                } else {
+                    showAlert(`Final shortlisting completed! Selected: ${result.selected_count}, Rejected: ${result.rejected_count}`, 'success');
+                    setTimeout(() => goBack(), 2000);
+                }
+            } catch (error) {
+                showAlert('Failed to execute final shortlisting: ' + error.message, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize auth check
+            if (!window.AuthUtils.initAuthCheck()) {
+                return;
+            }
+            
+            extractIdsFromUrl();
+            
+            // Get hrId from auth if undefined
+            if (!hrId || hrId === 'undefined') {
+                hrId = window.AuthUtils.getStoredCandidateId();
+            }
+            
+            loadCandidates();
+        });
+    </script>
+</body>
+</html>

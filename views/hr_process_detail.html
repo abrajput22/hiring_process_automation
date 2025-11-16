@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="antialiased bg-gray-100" style="font-family: 'Inter', sans-serif;">
+    <div id="navbar-root"></div>
+    <main class="min-h-[calc(100vh-4rem)] p-4 max-w-6xl mx-auto space-y-6">
+        <div id="header" class="bg-white p-6 rounded-2xl shadow"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Applications</h2>
+                    <span id="applications-count"
+                        class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">0 candidates</span>
+                </div>
+                <div class="text-sm text-gray-600 mb-3">
+                    <div>Deadline: <span id="resume-deadline" class="font-medium">-</span></div>
+                    <div>Status: <span class="text-green-600 font-medium">Open for Applications</span></div>
+                </div>
+                <div class="mb-3">
+                    <button id="resume-shortlist-btn" onclick="runResumeShortlisting()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run Resume Shortlisting
+                    </button>
+                </div>
+                <div id="applications" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Resume Shortlisted</h2>
+                    <span id="shortlisted-count"
+                        class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">0
+                        candidates</span>
+                </div>
+                <div class="text-sm text-gray-600 mb-3">
+                    <div>Assessment Date: <span id="assessment-date" class="font-medium">-</span></div>
+                    <div>Status: <span class="text-yellow-600 font-medium">Ready for Assessment</span></div>
+                </div>
+                <div class="mb-3">
+                    <button id="oa-shortlist-btn" onclick="runOAShortlisting()" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run OA Shortlisting
+                    </button>
+                </div>
+                <div id="shortlisted" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">OA Shortlisted</h2>
+                    <span id="oa-count"
+                        class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">0
+                        candidates</span>
+                </div>
+                <div class="text-sm text-gray-600 mb-3">
+                    <div>Technical Round: <span id="tech-interview-date" class="font-medium">-</span></div>
+                    <div>Status: <span class="text-blue-600 font-medium">Assessment Completed</span></div>
+                </div>
+                <div class="mb-3">
+                    <button id="hr-scoring-btn" onclick="goToScoring()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mr-2">
+                        HR Scoring
+                    </button>
+                    <button id="final-shortlist-btn" onclick="runFinalShortlisting()" 
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Run Final Shortlisting
+                    </button>
+                </div>
+                <div class="text-gray-500 italic">Use HR Scoring button to view and score candidates</div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Final Shortlisted</h2>
+                    <span id="final-count" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">0
+                        candidates</span>
+                </div>
+                <div class="text-sm text-gray-600 mb-3">
+                    <div>Package: <span id="package-offered" class="font-medium">-</span></div>
+                    <div>Status: <span class="text-red-600 font-medium">Ready for Offer</span></div>
+                </div>
+                <div id="final" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+        </div>
+    </main>
+    <script src="/public/js/auth-utils.js"></script>
+    <script src="/public/js/navbar.js"></script>
+    <script>
+        (async function init() {
+            // Initialize auth check - redirects if token expired
+            if (!window.AuthUtils.initAuthCheck()) {
+                return; // User was redirected due to expired token
+            }
+            
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            if (!hrId) { window.location.href = '/login'; return; }
+            
+            const parts = window.location.pathname.split('/');
+            const processId = parts[parts.length - 1];
+            console.log('Fetching process data for hrId:', hrId, 'processId:', processId);
+            const res = await window.AuthUtils.authenticatedFetch(`/${hrId}/processes/${processId}`);
+            const data = await res.json();
+            console.log('API Response:', res.status, data);
+            if (!res.ok) { 
+                console.error('API Error:', data);
+                alert(data.detail || 'Failed to load process data'); 
+                return; 
+            }
+
+            document.getElementById('header').innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-2xl font-bold">${data.process.process_name}</div>
+                        <div class="text-gray-600">Company: ${data.process.company_id}</div>
+                        <div class="mt-2 text-sm">${data.process.job_description}</div>
+                    </div>
+
+                </div>
+            `;
+
+            // Function to format date and time in IST
+            function formatDateTime(dateString) {
+                if (!dateString) return '-';
+                const date = new Date(dateString);
+                return date.toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            // Populate deadlines and dates with time
+            const resumeDeadlineEl = document.getElementById('resume-deadline');
+            const assessmentDateEl = document.getElementById('assessment-date');
+            const techInterviewDateEl = document.getElementById('tech-interview-date');
+            const offlineInterviewDateEl = document.getElementById('offline-interview-date');
+            const packageOfferedEl = document.getElementById('package-offered');
+            
+            if (resumeDeadlineEl) resumeDeadlineEl.textContent = formatDateTime(data.process.resume_deadline);
+            if (assessmentDateEl) assessmentDateEl.textContent = formatDateTime(data.process.assessment_date);
+            if (techInterviewDateEl) techInterviewDateEl.textContent = formatDateTime(data.process.offline_interview_date);
+            if (offlineInterviewDateEl) offlineInterviewDateEl.textContent = formatDateTime(data.process.offline_interview_date);
+            if (packageOfferedEl) packageOfferedEl.textContent = data.process.package_offered;
+
+            function renderList(elId, arr, countElId) {
+                const el = document.getElementById(elId);
+                const countEl = document.getElementById(countElId);
+                
+                if (!el || !countEl) {
+                    console.error(`Element not found: ${elId} or ${countElId}`);
+                    return;
+                }
+                
+                // Ensure arr is an array
+                if (!Array.isArray(arr)) {
+                    arr = [];
+                }
+                
+                const count = arr.length;
+                countEl.textContent = `${count} candidate${count !== 1 ? 's' : ''}`;
+                
+                if (count === 0) {
+                    el.innerHTML = '<div class="text-gray-500 italic">No candidates in this stage</div>';
+                } else {
+                    el.innerHTML = arr.map(c => `
+                        <div class="border rounded p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div class="font-medium">${c.name || 'Unnamed'}</div>
+                            <div class="text-sm text-gray-600">${c.email || ''}</div>
+                            <div class="text-xs text-gray-500 mt-1">Status: ${c.status || 'Unknown'}</div>
+                            ${c.resume_match_score !== undefined && c.resume_match_score !== null ? 
+                                `<div class="text-xs text-gray-500">Resume Score: ${c.resume_match_score}%</div>` : ''}
+                            ${c.oa_score !== undefined && c.oa_score !== null ? 
+                                `<div class="text-xs text-gray-500">OA Score: ${c.oa_score}%</div>` : ''}
+                            ${c.tech_score !== undefined && c.tech_score !== null ? 
+                                `<div class="text-xs text-gray-500">Tech Score: ${c.tech_score}%</div>` : ''}
+                            ${c.hr_score !== undefined && c.hr_score !== null ? 
+                                `<div class="text-xs text-gray-500">HR Score: ${c.hr_score}%</div>` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+
+            console.log('Data received:', data);
+            
+            renderList('applications', data.application || [], 'applications-count');
+            renderList('shortlisted', data.shortlisted || [], 'shortlisted-count');
+            // Don't render OA candidates - use HR Scoring button instead
+            const oaCountEl = document.getElementById('oa-count');
+            if (oaCountEl) {
+                const oaCount = (data.oa_shortlisted || []).length;
+                oaCountEl.textContent = `${oaCount} candidate${oaCount !== 1 ? 's' : ''}`;
+            }
+            renderList('final', data.final_shortlisted || [], 'final-count');
+            
+            // Also render OA rejected if exists
+            if (data.oa_rejected && data.oa_rejected.length > 0) {
+                console.log('OA Rejected candidates:', data.oa_rejected.length);
+            }
+            
+            // Show/hide HR scoring button based on OA shortlisted candidates
+            const hrScoringBtn = document.getElementById('hr-scoring-btn');
+            if (data.oa_shortlisted.length === 0) {
+                hrScoringBtn.style.display = 'none';
+            }
+            
+            // Store process ID for scoring page
+            window.currentProcessId = processId;
+
+        })();
+        
+        function goToScoring() {
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const parts = window.location.pathname.split('/');
+            const processId = parts[parts.length - 1];
+            window.location.href = `/${hrId}/processes/${processId}/scoring`;
+        }
+        
+        async function runResumeShortlisting() {
+            console.log('🔥 BUTTON CLICKED: Resume Shortlisting button clicked!');
+            const btn = document.getElementById('resume-shortlist-btn');
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
+            try {
+                const r = await fetch(`/${hrId}/processes/${processId}/shortlist`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const d = await r.json();
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Resume Shortlisting';
+            }
+        }
+        
+        async function runOAShortlisting() {
+            const btn = document.getElementById('oa-shortlist-btn');
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
+            try {
+                const r = await fetch(`/${hrId}/processes/${processId}/trigger-oa-workflow`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run OA Shortlisting';
+            }
+        }
+        
+        async function runFinalShortlisting() {
+            const btn = document.getElementById('final-shortlist-btn');
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            const hrId = window.AuthUtils.getStoredCandidateId();
+            const processId = window.location.pathname.split('/').pop();
+            
+            try {
+                const r = await fetch(`/${hrId}/processes/${processId}/trigger-final-workflow`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                alert(r.ok ? 'Success!' : 'Failed');
+                if (r.ok) location.reload();
+            } catch (e) {
+                alert('Failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Final Shortlisting';
+            }
+        }
+    </script>
+</body>
+
+</html>

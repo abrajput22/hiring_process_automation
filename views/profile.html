@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/public/js/auth-utils.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="antialiased bg-gray-100" style="font-family: 'Inter', sans-serif;">
+    <div id="navbar-root"></div>
+
+    <main class="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+        <div class="w-full max-w-xl bg-white p-8 rounded-2xl shadow-xl space-y-6">
+            <h1 class="text-3xl font-bold text-center">Your Profile</h1>
+            <form id="profileForm" class="space-y-4">
+                <div>
+                    <label for="name" class="text-sm font-medium text-gray-700">Name</label>
+                    <input id="name" type="text"
+                        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="email" class="text-sm font-medium text-gray-700">Email</label>
+                    <input id="email" type="email" disabled
+                        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                </div>
+                <div>
+                    <label for="role" class="text-sm font-medium text-gray-700">Role</label>
+                    <input id="role" type="text" disabled
+                        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                </div>
+                <button type="submit"
+                    class="w-full py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">Save</button>
+                <div id="profile-message" class="text-center text-sm"></div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        function renderNav(candidateId) {
+            // navbar rendered by /public/js/navbar.js
+        }
+
+        async function fetchProfile(candidateId) {
+            const res = await window.AuthUtils.authenticatedFetch(`/${candidateId}/me`);
+            if (!res.ok) throw new Error('Failed to fetch profile');
+            return res.json();
+        }
+
+        async function updateProfile(candidateId, body) {
+            const res = await window.AuthUtils.authenticatedFetch(`/${candidateId}/me`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Failed to update profile');
+            return res.json();
+        }
+
+        (async function init() {
+            // inject navbar
+            var s = document.createElement('script');
+            s.src = '/public/js/navbar.js';
+            document.body.appendChild(s);
+
+            // Initialize authentication check
+            if (window.AuthUtils && !window.AuthUtils.initAuthCheck()) {
+                return; // User was logged out due to expired token
+            }
+
+            const stored = window.AuthUtils.getStoredUser();
+            const token = window.AuthUtils.getStoredToken();
+            const candidateId = window.AuthUtils.getStoredCandidateId();
+            if (!token || !candidateId) {
+                window.location.href = '/login';
+                return;
+            }
+            renderNav(candidateId);
+            const msg = document.getElementById('profile-message');
+            try {
+                const data = await fetchProfile(candidateId);
+                document.getElementById('name').value = data.name || '';
+                document.getElementById('email').value = data.email || '';
+                document.getElementById('role').value = data.role || '';
+            } catch (e) {
+                msg.textContent = 'Could not load profile.';
+            }
+
+            document.getElementById('profileForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                msg.textContent = 'Saving...';
+                try {
+                    await updateProfile(candidateId, {
+                        name: document.getElementById('name').value
+                    });
+                    msg.textContent = 'Saved!';
+                } catch (err) {
+                    msg.textContent = 'Save failed';
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

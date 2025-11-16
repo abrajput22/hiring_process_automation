@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Assessment - Python Quiz</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .quiz-container { background: #f9f9f9; padding: 20px; border-radius: 8px; }
+        .question { margin-bottom: 20px; padding: 15px; background: white; border-radius: 5px; }
+        .question h3 { margin-top: 0; color: #333; }
+        .options { margin: 10px 0; }
+        .options label { display: block; margin: 5px 0; cursor: pointer; }
+        .options input { margin-right: 10px; }
+        .submit-btn { background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .submit-btn:hover { background: #0056b3; }
+        .error { color: red; text-align: center; padding: 20px; }
+        .success { color: green; text-align: center; padding: 20px; }
+        .timer { text-align: center; font-size: 18px; color: #d9534f; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>Python Online Assessment</h1>
+        <div id="timer" class="timer"></div>
+        
+        <form id="quizForm">
+            <div class="question">
+                <h3>1. What is the output of: print(type([]))</h3>
+                <div class="options">
+                    <label><input type="radio" name="q1" value="A"> &lt;class 'list'&gt;</label>
+                    <label><input type="radio" name="q1" value="B"> &lt;class 'array'&gt;</label>
+                    <label><input type="radio" name="q1" value="C"> &lt;class 'tuple'&gt;</label>
+                    <label><input type="radio" name="q1" value="D"> &lt;class 'dict'&gt;</label>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>2. Which method is used to add an element to a list?</h3>
+                <div class="options">
+                    <label><input type="radio" name="q2" value="A"> add()</label>
+                    <label><input type="radio" name="q2" value="B"> append()</label>
+                    <label><input type="radio" name="q2" value="C"> insert_end()</label>
+                    <label><input type="radio" name="q2" value="D"> push()</label>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>3. What is the correct way to create a dictionary?</h3>
+                <div class="options">
+                    <label><input type="radio" name="q3" value="A"> dict = []</label>
+                    <label><input type="radio" name="q3" value="B"> dict = ()</label>
+                    <label><input type="radio" name="q3" value="C"> dict = {}</label>
+                    <label><input type="radio" name="q3" value="D"> dict = &lt;&gt;</label>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>4. Which keyword is used to define a function in Python?</h3>
+                <div class="options">
+                    <label><input type="radio" name="q4" value="A"> function</label>
+                    <label><input type="radio" name="q4" value="B"> def</label>
+                    <label><input type="radio" name="q4" value="C"> func</label>
+                    <label><input type="radio" name="q4" value="D"> define</label>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>5. What is the output of: len("Python")</h3>
+                <div class="options">
+                    <label><input type="radio" name="q5" value="A"> 5</label>
+                    <label><input type="radio" name="q5" value="B"> 6</label>
+                    <label><input type="radio" name="q5" value="C"> 7</label>
+                    <label><input type="radio" name="q5" value="D"> Error</label>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Assessment</button>
+        </form>
+
+        <div id="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Timer (30 minutes)
+        let timeLeft = 30 * 60;
+        const timerElement = document.getElementById('timer');
+        
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `Time Remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                document.getElementById('quizForm').submit();
+            }
+            timeLeft--;
+        }
+        
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        // Form submission
+        document.getElementById('quizForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const answers = {};
+            for (let [key, value] of formData.entries()) {
+                answers[key] = value;
+            }
+            
+            try {
+                const response = await fetch(window.location.pathname + '/submit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({answers: answers})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('result').innerHTML = 
+                        `<div class="success">
+                            <h2>Assessment Submitted Successfully!</h2>
+                            <p>Thank you for taking the assessment.</p>
+                            <p>Results will be communicated via email.</p>
+                        </div>`;
+                    document.getElementById('result').style.display = 'block';
+                    document.getElementById('quizForm').style.display = 'none';
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error submitting assessment: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

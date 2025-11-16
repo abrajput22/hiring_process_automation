@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="antialiased bg-gray-100" style="font-family: 'Inter', sans-serif;">
+    <div id="navbar-root"></div>
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl space-y-6">
+            <h1 class="text-3xl font-bold text-center">Login</h1>
+            <p class="text-center text-gray-600">Enter your credentials to continue.</p>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="login-email" class="text-sm font-medium text-gray-700">Email address</label>
+                    <input type="email" id="login-email" required
+                        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="login-password" class="text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" required
+                        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit"
+                    class="w-full py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Log
+                    In</button>
+                <div id="login-message" class="text-center text-sm mt-2"></div>
+            </form>
+            <p class="text-center text-gray-600">Don't have an account? <a href="/signup"
+                    class="text-blue-600 hover:underline">Sign up</a></p>
+        </div>
+    </div>
+
+    <script>
+        function parseJwtCandidateId(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const payload = JSON.parse(jsonPayload);
+                return payload.candidate_id || null;
+            } catch (e) { return null; }
+        }
+        const API_URL = '';
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const messageEl = document.getElementById('login-message');
+            messageEl.textContent = 'Logging in...';
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',  // Include cookies
+                    body: JSON.stringify({ email, password })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    // Cookies are set automatically by the server
+                    const candidateId = result?.user?.candidate_id;
+                    if (candidateId) {
+                        window.location.href = `/${candidateId}/home`;
+                    } else {
+                        window.location.href = '/home';
+                    }
+                } else {
+                    messageEl.textContent = `Login failed: ${result.detail}`;
+                }
+            } catch (error) {
+                messageEl.textContent = `An error occurred: ${error.message}`;
+            }
+        });
+    </script>
+    <script src="/public/js/auth-utils.js"></script>
+    <script src="/public/js/navbar.js"></script>
+</body>
+
+</html>
